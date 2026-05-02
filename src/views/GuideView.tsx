@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useState, memo, useMemo, useCallback } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { ChevronDown, CalendarDays, Users, FileText, Megaphone, EyeOff, UserCheck, BarChart, Scale } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function GuideView() {
+const GuideView = memo(() => {
   const { language, t } = useLanguage();
   const [expanded, setExpanded] = useState<number | null>(null);
 
-  const guideData = {
+  const guideData = useMemo(() => ({
     en: [
       { id: 1, title: '1. Election Announcement', summary: 'Model Code of Conduct (MCC) kicks in.', detail: 'The Election Commission announces dates. The MCC strictly prohibits candidates from announcing new schemes or misusing government machinery.' },
       { id: 2, title: '2. Voter Roll Verification', summary: 'Check if your name is on the list.', detail: 'You must verify your name on voters.eci.gov.in. Without your name on the roll, you cannot vote even with an ID.' },
@@ -28,11 +28,9 @@ export default function GuideView() {
       { id: 7, title: '7. मतगणना और परिणाम', summary: 'EVM खोले जाते हैं।', detail: 'EVM को मतगणना के दिन तक भारी सशस्त्र गार्ड और CCTV के तहत स्ट्रॉन्ग रूम में रखा जाता है।' },
       { id: 8, title: '8. चुनाव के बाद', summary: 'अगर आपको कोई शिकायत है तो क्या करें?', detail: 'आप cVIGIL ऐप या 1950 हेल्पलाइन के माध्यम से रिश्वत देने या धमकाने जैसी चुनाव कुरीतियों की रिपोर्ट कर सकते हैं।' },
     ]
-  };
+  }), []);
 
-  const currentData = guideData[language];
-
-  const stepStyles = [
+  const stepStyles = useMemo(() => [
     { icon: CalendarDays, color: 'text-orange-500', bg: 'bg-orange-100' },
     { icon: Users, color: 'text-orange-500', bg: 'bg-orange-100' },
     { icon: FileText, color: 'text-orange-500', bg: 'bg-orange-100' },
@@ -41,14 +39,18 @@ export default function GuideView() {
     { icon: UserCheck, color: 'text-green-600', bg: 'bg-green-100' },
     { icon: BarChart, color: 'text-blue-600', bg: 'bg-blue-100' },
     { icon: Scale, color: 'text-blue-600', bg: 'bg-blue-100' }
-  ];
+  ], []);
 
-  const steps = currentData.map((data, index) => ({
+  const steps = useMemo(() => guideData[language].map((data, index) => ({
       ...data,
       ...stepStyles[index]
-  }));
+  })), [language, guideData, stepStyles]);
 
-  const userState = localStorage.getItem('user_state');
+  const toggleExpand = useCallback((id: number) => {
+    setExpanded(prev => prev === id ? null : id);
+  }, []);
+
+  const userState = useMemo(() => localStorage.getItem('user_state'), []);
 
   return (
     <div className="pb-24 pt-6 max-w-md mx-auto min-h-screen">
@@ -70,11 +72,13 @@ export default function GuideView() {
         {steps.map((step) => (
           <div key={step.id} className="relative">
              <button 
-                onClick={() => setExpanded(expanded === step.id ? null : step.id)}
+                onClick={() => toggleExpand(step.id)}
+                aria-expanded={expanded === step.id}
+                aria-label={`${step.title}: ${step.summary}`}
                 className="w-full text-left bg-surface border border-gray-200 rounded-2xl p-4 shadow-sm flex items-start active:scale-[0.99] transition-transform"
              >
                 <div className={`mt-0.5 w-10 h-10 ${step.bg} ${step.color} rounded-full flex items-center justify-center shrink-0 mr-4 shadow-inner ring-4 ring-background`}>
-                    <step.icon size={20} />
+                    <step.icon size={20} aria-hidden="true" />
                 </div>
                 <div className="flex-1 pr-2">
                     <h3 className="font-bold text-gray-800">{step.title}</h3>
@@ -83,6 +87,7 @@ export default function GuideView() {
                 <ChevronDown 
                     size={20} 
                     className={`text-gray-400 mt-2 transition-transform duration-300 ${expanded === step.id ? 'rotate-180' : ''}`} 
+                    aria-hidden="true"
                 />
              </button>
 
@@ -105,4 +110,6 @@ export default function GuideView() {
       </div>
     </div>
   );
-}
+});
+
+export default GuideView;

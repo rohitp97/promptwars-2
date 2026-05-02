@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, memo, useMemo, useCallback } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CheckCircle, XCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-const QUESTIONS = [
+const QUESTIONS_DATA = [
   {
     text: "Under which law is your vote kept secret?",
     options: [
@@ -106,7 +106,7 @@ const QUESTIONS = [
   }
 ];
 
-export default function QuizView() {
+const QuizView = memo(() => {
   const { t } = useLanguage();
   const [state, setState] = useState<'intro' | 'playing' | 'result'>('intro');
   const [currentQ, setCurrentQ] = useState(0);
@@ -118,15 +118,32 @@ export default function QuizView() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
 
-  const handleStart = () => {
+  const QUESTIONS = useMemo(() => QUESTIONS_DATA, []);
+
+  const finishQuiz = useCallback((finalScore: number) => {
+    if (bestScore === null || finalScore > bestScore) {
+      localStorage.setItem('votesmart_best_score', finalScore.toString());
+      setBestScore(finalScore);
+    }
+    setState('result');
+    if (finalScore >= 71) {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    }
+  }, [bestScore]);
+
+  const handleStart = useCallback(() => {
     setState('playing');
     setCurrentQ(0);
     setScore(0);
     setSelectedOption(null);
     setIsAnswered(false);
-  };
+  }, []);
 
-  const handleOptionClick = (index: number) => {
+  const handleOptionClick = useCallback((index: number) => {
     if (isAnswered) return;
     
     setSelectedOption(index);
@@ -146,24 +163,9 @@ export default function QuizView() {
         finishQuiz(score + (isCorrect ? 10 : 0));
       }
     }, 1200);
-  };
+  }, [currentQ, isAnswered, score, finishQuiz, QUESTIONS]);
 
-  const finishQuiz = (finalScore: number) => {
-    if (bestScore === null || finalScore > bestScore) {
-      localStorage.setItem('votesmart_best_score', finalScore.toString());
-      setBestScore(finalScore);
-    }
-    setState('result');
-    if (finalScore >= 71) {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-    }
-  };
-
-  const getBadgeInfo = (s: number) => {
+  const getBadgeInfo = useCallback((s: number) => {
     if (s <= 40) return { 
       badge: '🌱', 
       title: t('quiz_badge_naya'), 
@@ -182,9 +184,9 @@ export default function QuizView() {
       sub: "Zabardast! You're in the top tier of informed Indian voters.", 
       bg: 'bg-[#EEF2FF]' 
     };
-  };
+  }, [t]);
 
-  const handleShare = () => {
+  const handleShare = useCallback(() => {
     const badge = getBadgeInfo(score).title;
     const text = `I scored ${score}/100 on the VoteSmart India Voter IQ Quiz and earned the '${badge}' badge! 🗳️ Are you election-ready? Test yourself: ${window.location.href}`;
     
@@ -194,7 +196,7 @@ export default function QuizView() {
       navigator.clipboard.writeText(text);
       alert('Result copied to clipboard!');
     }
-  };
+  }, [score, getBadgeInfo]);
 
   if (state === 'intro') {
     return (
@@ -209,21 +211,21 @@ export default function QuizView() {
           <p className="font-semibold text-gray-700 mb-3 text-center">Score Badges</p>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">🌱</span>
+              <span className="text-2xl" aria-hidden="true">🌱</span>
               <div>
                 <p className="font-bold text-[15px]">{t('quiz_badge_naya')}</p>
                 <p className="text-xs text-gray-500">0-40 points</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-2xl">📚</span>
+              <span className="text-2xl" aria-hidden="true">📚</span>
               <div>
                 <p className="font-bold text-[15px]">{t('quiz_badge_samajhdar')}</p>
                 <p className="text-xs text-gray-500">41-70 points</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-2xl">🏆</span>
+              <span className="text-2xl" aria-hidden="true">🏆</span>
               <div>
                 <p className="font-bold text-[15px]">{t('quiz_badge_champion')}</p>
                 <p className="text-xs text-gray-500">71-100 points</p>
@@ -234,12 +236,13 @@ export default function QuizView() {
 
         <button 
           onClick={handleStart}
+          aria-label={t('quiz_start')}
           className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg active:scale-95 transition-transform shadow-md"
         >
           {t('quiz_start')}
         </button>
         {bestScore !== null && (
-          <p className="mt-4 text-sm font-semibold text-gray-500">
+          <p className="mt-4 text-sm font-semibold text-gray-500" aria-live="polite">
             {t('quiz_best_score')}: <span className="text-primary">{bestScore}/100</span> — {getBadgeInfo(bestScore).title}
           </p>
         )}
@@ -253,12 +256,12 @@ export default function QuizView() {
       <div className="pb-24 px-5 pt-6 max-w-md mx-auto min-h-[calc(100vh-130px)] flex flex-col">
         <div className="flex justify-between items-center mb-4">
           <span className="font-bold text-gray-500">Question {currentQ + 1}/10</span>
-          <span className="font-bold text-primary bg-primary/10 px-3 py-1 rounded-full text-sm">
+          <span className="font-bold text-primary bg-primary/10 px-3 py-1 rounded-full text-sm" aria-live="polite">
             Score: {score}
           </span>
         </div>
         
-        <div className="w-full h-2 bg-gray-200 rounded-full mb-8 overflow-hidden">
+        <div className="w-full h-2 bg-gray-200 rounded-full mb-8 overflow-hidden" role="progressbar" aria-valuenow={(currentQ / 10) * 100} aria-valuemin={0} aria-valuemax={100}>
           <div 
             className="h-full bg-primary transition-all duration-300 ease-in-out"
             style={{ width: `${((currentQ) / 10) * 100}%` }}
@@ -270,7 +273,7 @@ export default function QuizView() {
             {q.text}
           </h3>
 
-          <div className="space-y-3">
+          <div className="space-y-3" role="radiogroup" aria-label="Quiz options">
             {q.options.map((opt, i) => {
               let btnClass = "bg-white border-gray-200 text-gray-800 hover:border-gray-300";
               let icon = null;
@@ -278,10 +281,10 @@ export default function QuizView() {
               if (isAnswered) {
                 if (i === q.correct) {
                   btnClass = "bg-[#1A6B3C] border-[#1A6B3C] text-white font-semibold";
-                  icon = <CheckCircle size={20} className="text-white" />;
+                  icon = <CheckCircle size={20} className="text-white" aria-hidden="true" />;
                 } else if (i === selectedOption) {
                   btnClass = "bg-[#DC2626] border-[#DC2626] text-white font-semibold";
-                  icon = <XCircle size={20} className="text-white" />;
+                  icon = <XCircle size={20} className="text-white" aria-hidden="true" />;
                 } else {
                   btnClass = "bg-white border-gray-200 text-gray-400 opacity-50";
                 }
@@ -292,6 +295,7 @@ export default function QuizView() {
                   key={i}
                   disabled={isAnswered}
                   onClick={() => handleOptionClick(i)}
+                  aria-label={opt}
                   className={`w-full min-h-[56px] py-4 px-4 rounded-[16px] border text-left text-[16px] transition-all duration-300 flex justify-between items-center ${btnClass}`}
                 >
                   <span className="flex-1 pr-2 leading-tight">{opt}</span>
@@ -309,12 +313,12 @@ export default function QuizView() {
 
   return (
     <div className={`pb-24 px-5 pt-12 max-w-md mx-auto min-h-[calc(100vh-130px)] flex flex-col items-center animate-in fade-in zoom-in-95 duration-500 ${result.bg} -mx-4`}>
-      <div className="text-[80px] mb-2 leading-none">{result.badge}</div>
+      <div className="text-[80px] mb-2 leading-none" aria-hidden="true">{result.badge}</div>
       <h2 className="text-[28px] font-bold text-primary mb-6 text-center leading-tight">
         {result.title}
       </h2>
       
-      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-black/5 w-full text-center mb-6">
+      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-black/5 w-full text-center mb-6" role="status" aria-live="polite">
         <p className="text-gray-500 font-semibold mb-1">{t('quiz_score')}</p>
         <p className="text-5xl font-black text-gray-800 mb-2">{score}<span className="text-2xl text-gray-400">/100</span></p>
         <p className="text-sm font-semibold text-green-600 bg-green-100 inline-block px-3 py-1 rounded-full mb-4">
@@ -329,12 +333,14 @@ export default function QuizView() {
       <div className="w-full flex gap-3 mt-auto mb-4">
         <button 
           onClick={handleShare}
+          aria-label={t('quiz_share')}
           className="flex-1 py-4 border-2 border-primary text-primary bg-white rounded-xl font-bold text-[15px] active:scale-95 transition-transform shadow-sm"
         >
           {t('quiz_share')}
         </button>
         <button 
           onClick={handleStart}
+          aria-label={t('quiz_try_again')}
           className="flex-1 py-4 bg-primary text-white rounded-xl font-bold text-[15px] active:scale-95 transition-transform shadow-sm"
         >
           {t('quiz_try_again')}
@@ -342,4 +348,6 @@ export default function QuizView() {
       </div>
     </div>
   );
-}
+});
+
+export default QuizView;

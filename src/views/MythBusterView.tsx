@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, memo, useMemo, useCallback } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'framer-motion';
 import { RefreshCw, Share2 } from 'lucide-react';
 
-export default function MythBusterView() {
+const MythBusterView = memo(() => {
   const { language, t } = useLanguage();
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
 
-  const mythsData = {
+  const mythsData = useMemo(() => ({
     en: [
       { myth: "My vote can be traced — the government knows who I voted for.", fact: "EVMs record no voter identity. Your vote is constitutionally secret under Section 128 of RPA 1951." },
       { myth: "If I took ₹500 from a candidate, I have to vote for them.", fact: "Taking the money is legally grey for you, but giving it is a criminal offense (Section 171B IPC). Your vote is still yours." },
@@ -37,41 +37,49 @@ export default function MythBusterView() {
       { myth: "महिला मतदाताओं को अपने बच्चों को अंदर लाने की अनुमति नहीं है।", fact: "एक निश्चित उम्र से कम के बच्चे माताओं के साथ बूथ के अंदर जा सकते हैं (नियम राज्य के अनुसार भिन्न होते हैं)।" },
       { myth: "मैं किसे वोट दिया इसके प्रमाण के रूप में अपने बैलेट का फोटो ले सकता हूँ।", fact: "मतदान केंद्र के अंदर फोटोग्राफी सख्त वर्जित है और यह एक आपराधिक अपराध है।" }
     ]
-  };
+  }), []);
 
   const myths = mythsData[language];
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (flipped) {
       setFlipped(false);
-      setTimeout(() => setIndex((index + 1) % myths.length), 300);
+      setTimeout(() => setIndex(prev => (prev + 1) % myths.length), 300);
     } else {
-      setIndex((index + 1) % myths.length);
+      setIndex(prev => (prev + 1) % myths.length);
     }
-  };
+  }, [flipped, myths.length]);
 
-  const handleShare = (e: React.MouseEvent) => {
+  const handleShare = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     const text = `Did you know?\nMyth: ${myths[index].myth}\nFact: ${myths[index].fact}\n\nVia VoteSmartIndia 🗳️`;
     if (navigator.share) {
       navigator.share({ title: 'VoteSmartIndia Myth Buster', text }).catch(console.error);
     } else {
       navigator.clipboard.writeText(text);
-      // alert ignored in clean UI, maybe short visual feedback is better, but keeping it simple for now
     }
-  };
+  }, [index, myths]);
+
+  const toggleFlip = useCallback(() => {
+    setFlipped(prev => !prev);
+  }, []);
 
   return (
     <div className="pb-24 px-5 pt-6 max-w-md mx-auto min-h-[calc(100vh-130px)] flex flex-col">
       <h2 className="text-2xl font-bold mb-6 text-primary">{t('myth_title')}</h2>
 
       <div className="flex-1 flex flex-col items-center justify-center py-4">
-        <div className="relative w-full aspect-[3/4] perspective-1000 max-h-[60vh]">
+        <div 
+          className="relative w-full aspect-[3/4] perspective-1000 max-h-[60vh]"
+          role="region"
+          aria-label="Myth vs Fact interactive card"
+        >
           <motion.div
             className="w-full h-full cursor-pointer relative preserve-3d"
             animate={{ rotateY: flipped ? 180 : 0 }}
             transition={{ duration: 0.6, type: 'spring', stiffness: 200, damping: 20 }}
-            onClick={() => setFlipped(!flipped)}
+            onClick={toggleFlip}
+            aria-label={flipped ? `Fact: ${myths[index].fact}` : `Myth: ${myths[index].myth}. Tap to reveal fact.`}
           >
             {/* Front Card (Myth) */}
             <div className="absolute inset-0 backface-hidden w-full h-full bg-surface border-2 border-accent/20 rounded-[32px] shadow-lg p-8 flex flex-col justify-center items-center text-center space-y-6">
@@ -79,7 +87,7 @@ export default function MythBusterView() {
                 {language === 'en' ? 'Myth' : 'झूठ'}
               </span>
               <p className="text-2xl font-bold text-gray-800 leading-snug">"{myths[index].myth}"</p>
-              <div className="absolute bottom-8 text-gray-400 text-sm font-medium animate-pulse">
+              <div className="absolute bottom-8 text-gray-400 text-sm font-medium animate-pulse" aria-hidden="true">
                 {language === 'en' ? 'Tap to reveal fact' : 'सच देखने के लिए टैप करें'}
               </div>
             </div>
@@ -93,24 +101,28 @@ export default function MythBusterView() {
               
               <button 
                 onClick={handleShare}
+                aria-label="Share this fact"
                 className="absolute bottom-8 bg-white/20 hover:bg-white/30 text-white px-5 py-2 rounded-full font-semibold flex items-center shadow-sm backdrop-blur-sm"
               >
-                <Share2 size={16} className="mr-2" /> {t('share')}
+                <Share2 size={16} className="mr-2" aria-hidden="true" /> {t('share')}
               </button>
             </div>
           </motion.div>
         </div>
 
         <div className="mt-10 flex items-center space-x-6">
-          <p className="text-gray-400 font-semibold">{index + 1} / {myths.length}</p>
+          <p className="text-gray-400 font-semibold" aria-live="polite">{index + 1} / {myths.length}</p>
           <button 
             onClick={handleNext}
+            aria-label="Show next myth"
             className="bg-primary text-white w-14 h-14 flex justify-center items-center rounded-full shadow-lg active:scale-90 transition-transform ring-4 ring-primary/20"
           >
-            <RefreshCw size={24} className={flipped ? "" : "-scale-x-100"} />
+            <RefreshCw size={24} className={flipped ? "" : "-scale-x-100"} aria-hidden="true" />
           </button>
         </div>
       </div>
     </div>
   );
-}
+});
+
+export default MythBusterView;

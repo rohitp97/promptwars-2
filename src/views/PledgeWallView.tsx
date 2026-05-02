@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo, useMemo, useCallback } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { CheckCircle, Share, MapPin, Inbox as BoxIcon } from 'lucide-react';
+import { Share, MapPin, Inbox as BoxIcon, Loader2 } from 'lucide-react';
 import Footer from '../components/Footer';
 import DOMPurify from 'dompurify';
 
@@ -11,7 +11,7 @@ interface Pledge {
   timestamp: number;
 }
 
-const states = [
+const STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
   "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
   "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana",
@@ -19,7 +19,7 @@ const states = [
   "Dadra & Nagar Haveli and Daman & Diu", "Delhi", "Jammu and Kashmir", "Lakshadweep", "Puducherry", "Ladakh"
 ];
 
-const seedData: Pledge[] = [
+const SEED_DATA: Pledge[] = [
   { id: 1, name: "Ananya Sharma", state: "Delhi", timestamp: Date.now() - 180000 },
   { id: 2, name: "Rahul Verma", state: "Uttar Pradesh", timestamp: Date.now() - 420000 },
   { id: 3, name: "Priya Patel", state: "Gujarat", timestamp: Date.now() - 900000 },
@@ -34,13 +34,13 @@ const seedData: Pledge[] = [
   { id: 12, name: "Fatima Sheikh", state: "Bihar", timestamp: Date.now() - 86400000 }
 ];
 
-export default function PledgeWallView() {
+const PledgeWallView = memo(() => {
   const { t } = useLanguage();
   const [name, setName] = useState('');
   const [selectedState, setSelectedState] = useState('');
   const [pledges, setPledges] = useState<Pledge[]>(() => {
     if (!localStorage.getItem('votesmart_pledges_seeded')) {
-      localStorage.setItem('votesmart_pledges', JSON.stringify(seedData));
+      localStorage.setItem('votesmart_pledges', JSON.stringify(SEED_DATA));
       localStorage.setItem('votesmart_pledge_count', '4271');
       localStorage.setItem('votesmart_pledges_seeded', 'true');
     }
@@ -69,40 +69,41 @@ export default function PledgeWallView() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!name.trim() || !selectedState) return;
     
     setIsSubmitting(true);
     
     setTimeout(() => {
-      // Sanitize the user input to prevent XSS
       const sanitizedName = DOMPurify.sanitize(name.trim(), { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
       
       const newPledge: Pledge = {
         id: Date.now(),
-        name: sanitizedName || 'Anonymous', // Fallback if name was completely stripped
+        name: sanitizedName || 'Anonymous',
         state: selectedState,
         timestamp: Date.now()
       };
       
-      const newPledges = [newPledge, ...pledges];
-      setPledges(newPledges);
+      setPledges(prev => {
+        const updated = [newPledge, ...prev];
+        localStorage.setItem('votesmart_pledges', JSON.stringify(updated.slice(0, 50)));
+        return updated;
+      });
       
-      const newCount = pledgeCount + 1;
-      setPledgeCount(newCount);
-      
-      localStorage.setItem('votesmart_pledges', JSON.stringify(newPledges));
-      localStorage.setItem('votesmart_pledge_count', newCount.toString());
+      setPledgeCount(prev => {
+        const next = prev + 1;
+        localStorage.setItem('votesmart_pledge_count', next.toString());
+        return next;
+      });
       
       setMyPledge(newPledge);
       setHasPledged(true);
       setIsSubmitting(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 600);
-  };
+  }, [name, selectedState]);
 
-
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     const shareText = `I, ${myPledge?.name} from ${myPledge?.state}, pledge to vote in the upcoming elections and not be influenced by cash or gifts. 🗳️🇮🇳 \nTake the pledge: ${window.location.href}`;
     
     if (navigator.share) {
@@ -119,13 +120,13 @@ export default function PledgeWallView() {
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2000);
     }
-  };
+  }, [myPledge]);
 
-  const scrollToWall = () => {
+  const scrollToWall = useCallback(() => {
     wallRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
-  const formatTimeAgo = (timestamp: number) => {
+  const formatTimeAgo = useCallback((timestamp: number) => {
     const diff = now - timestamp;
     const minutes = Math.floor(diff / 60000);
     if (minutes < 1) return "Just now";
@@ -133,21 +134,21 @@ export default function PledgeWallView() {
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours} hours ago`;
     return "Today";
-  };
+  }, [now]);
 
-  const uniqueStatesCount = new Set(pledges.map(p => p.state)).size;
-  const displayPledges = pledges.slice(0, 20);
-  const remainingCount = Math.max(0, pledgeCount - 20);
+  const uniqueStatesCount = useMemo(() => new Set(pledges.map(p => p.state)).size, [pledges]);
+  const displayPledges = useMemo(() => pledges.slice(0, 20), [pledges]);
+  const remainingCount = useMemo(() => Math.max(0, pledgeCount - 20), [pledgeCount]);
 
   return (
     <div className="pb-24 flex flex-col min-h-[calc(100vh-130px)] bg-[#FAFAF8]">
-      {/* SECTION 1 - EMOTIONAL HERO BANNER */}
+      {/* SECTION 1 - HERO BANNER */}
       <div className="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF3B3B] px-5 py-10 text-center text-white shadow-md">
         <h1 className="text-3xl font-bold mb-2">{t('pledge_hero')}</h1>
         <p className="text-[15px] opacity-90 mb-6 max-w-sm mx-auto">
           {t('pledge_hero_sub')}
         </p>
-        <div className="text-3xl font-bold bg-white/20 inline-block px-4 py-2 rounded-xl backdrop-blur-sm">
+        <div className="text-3xl font-bold bg-white/20 inline-block px-4 py-2 rounded-xl backdrop-blur-sm" role="status" aria-live="polite">
           🗳️ {pledgeCount.toLocaleString()} <span className="text-xl font-semibold">{t('pledge_count_text')}</span>
         </div>
       </div>
@@ -165,6 +166,7 @@ export default function PledgeWallView() {
                   placeholder={t('pledge_name') + " e.g. Priya Sharma"}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  aria-label="Your Name"
                   className="w-full h-12 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent transition-all"
                 />
               </div>
@@ -173,24 +175,26 @@ export default function PledgeWallView() {
                 <select 
                   value={selectedState}
                   onChange={(e) => setSelectedState(e.target.value)}
+                  aria-label="Select your state"
                   className="w-full h-12 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent transition-all bg-white text-gray-700"
                 >
                   <option value="">{t('pledge_select_state')}</option>
-                  {states.map(s => <option key={s} value={s}>{s}</option>)}
+                  {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
 
-              <div className="bg-[#FFF7ED] p-4 rounded-xl text-sm italic text-gray-700 border border-orange-100 leading-relaxed">
+              <div className="bg-[#FFF7ED] p-4 rounded-xl text-sm italic text-gray-700 border border-orange-100 leading-relaxed" aria-live="polite">
                 "I, <span className="font-bold border-b border-gray-400">{name || '[NAME]'}</span>, as a proud citizen of India, pledge to cast my vote in the upcoming elections. I will not be influenced by cash, gifts, caste, or religion. My vote is my right and my responsibility. Jai Hind. 🇮🇳"
               </div>
 
               <button 
                 onClick={handleSubmit}
                 disabled={!name.trim() || !selectedState || isSubmitting}
+                aria-label="Submit Pledge"
                 className="w-full h-14 mt-2 bg-[#FF6B35] text-white rounded-xl font-bold text-lg disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
-                  <CheckCircle className="animate-pulse" />
+                  <Loader2 className="animate-spin" aria-hidden="true" />
                 ) : (
                   <>{t('pledge_take')} 🤝</>
                 )}
@@ -199,15 +203,15 @@ export default function PledgeWallView() {
           </div>
         ) : (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden text-center relative">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden text-center relative" role="status" aria-label="Your Pledge Card">
               <div className="h-1.5 w-full bg-[#FF6B35]"></div>
               <div className="p-6">
-                <div className="text-4xl mb-3">🇮🇳</div>
+                <div className="text-4xl mb-3" aria-hidden="true">🇮🇳</div>
                 <h2 className="text-2xl font-bold text-[#FF6B35] mb-4">{t('pledge_hero')}</h2>
                 
                 <h3 className="text-xl font-bold text-[#1A1A1A]">{myPledge?.name}</h3>
                 <p className="text-gray-600 flex items-center justify-center gap-1 mt-1 font-medium">
-                  <MapPin size={16} /> {myPledge?.state}
+                  <MapPin size={16} aria-hidden="true" /> {myPledge?.state}
                 </p>
                 <p className="text-xs text-gray-500 mt-2 font-medium">Pledge #{pledgeCount.toLocaleString()}</p>
                 
@@ -217,16 +221,17 @@ export default function PledgeWallView() {
                   "I, <strong>{myPledge?.name}</strong>, as a proud citizen of India, pledge to cast my vote in the upcoming elections. I will not be influenced by cash, gifts, caste, or religion. My vote is my right and my responsibility. Jai Hind. 🇮🇳"
                 </p>
                 
-                <p className="text-xs text-gray-400 mt-4 font-medium">29 April 2026</p>
+                <p className="text-xs text-gray-400 mt-4 font-medium">2 May 2026</p>
                 <p className="text-xs text-gray-500 mt-2 font-bold">VoteSmartIndia 🗳️ | Samjho. Jaano. Vote Karo.</p>
               </div>
             </div>
 
             <button 
               onClick={handleShare}
+              aria-label="Share Pledge"
               className="w-full h-14 bg-[#FF6B35] text-white rounded-xl font-bold text-lg active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm relative"
             >
-              <Share size={20} /> {t('pledge_share')}
+              <Share size={20} aria-hidden="true" /> {t('pledge_share')}
               {showToast && (
                 <div className="absolute -top-12 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg animate-in fade-in zoom-in duration-200">
                   Copied to clipboard!
@@ -236,15 +241,17 @@ export default function PledgeWallView() {
 
             <button 
               onClick={scrollToWall}
+              aria-label="See Pledge Wall"
               className="w-full h-14 border-2 border-[#FF6B35] text-[#FF6B35] bg-white rounded-xl font-bold text-lg active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <BoxIcon size={20} /> {t('pledge_see_wall')}
+              <BoxIcon size={20} aria-hidden="true" /> {t('pledge_see_wall')}
             </button>
 
             <div className="text-center pt-2 pb-2">
               <p className="text-sm text-gray-500 mb-1">{t('pledge_want_another')}</p>
               <button 
                 onClick={() => { setHasPledged(false); setName(''); setSelectedState(''); }}
+                aria-label="Take another pledge"
                 className="text-[#FF6B35] font-semibold text-sm underline underline-offset-2"
               >
                 {t('pledge_add_another')}
@@ -258,19 +265,19 @@ export default function PledgeWallView() {
           <h3 className="text-[20px] font-bold text-textMain">{t('pledge_wall_title')} 🏛️</h3>
           <p className="text-sm text-gray-500 mb-4">{t('pledge_wall_sub')}</p>
           
-          <div className="space-y-3">
+          <div className="space-y-3" role="list" aria-label="Recent Pledges">
             {displayPledges.map((pledge, idx) => (
-              <div key={pledge.id || idx} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center flex-shrink-0 text-lg">
+              <div key={pledge.id || idx} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300" role="listitem">
+                <div className="w-9 h-9 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center flex-shrink-0 text-lg" aria-hidden="true">
                   🗳️
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
                     <h4 className="font-bold text-[16px] text-textMain truncate pr-2">{pledge.name}</h4>
-                    <span className="text-[12px] text-gray-400 whitespace-nowrap">{formatTimeAgo(pledge.timestamp)}</span>
+                    <span className="text-[12px] text-gray-400 whitespace-nowrap" aria-label={`Time ago: ${formatTimeAgo(pledge.timestamp)}`}>{formatTimeAgo(pledge.timestamp)}</span>
                   </div>
                   <p className="text-[14px] text-gray-500 flex items-center gap-1 mt-0.5">
-                    <MapPin size={12} /> {pledge.state}
+                    <MapPin size={12} aria-hidden="true" /> {pledge.state}
                   </p>
                   <p className="text-[13px] text-gray-600 italic mt-2">
                     "Maine pratigya li 🇮🇳"
@@ -281,26 +288,26 @@ export default function PledgeWallView() {
           </div>
 
           {remainingCount > 0 && (
-            <div className="text-center py-6 text-gray-500 font-medium">
+            <div className="text-center py-6 text-gray-500 font-medium" aria-live="polite">
               + {remainingCount.toLocaleString()} {t('pledge_more')} 🇮🇳
             </div>
           )}
         </div>
 
-        {/* SECTION 5 - BOTTOM IMPACT STATS */}
+        {/* SECTION 5 - IMPACT STATS */}
         <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex justify-between items-center text-center">
           <div className="flex flex-col items-center flex-1">
-            <span className="text-lg mb-1">🗳️</span>
-            <span className="text-xs font-bold text-orange-800">{pledgeCount.toLocaleString()} {t('pledge_stat_pledges')}</span>
+            <span className="text-lg mb-1" aria-hidden="true">🗳️</span>
+            <span className="text-xs font-bold text-orange-800" aria-live="polite">{pledgeCount.toLocaleString()} {t('pledge_stat_pledges')}</span>
           </div>
           <div className="w-px h-8 bg-orange-200"></div>
           <div className="flex flex-col items-center flex-1">
-            <span className="text-lg mb-1">🗺️</span>
-            <span className="text-xs font-bold text-orange-800">{uniqueStatesCount} {t('pledge_stat_states')}</span>
+            <span className="text-lg mb-1" aria-hidden="true">🗺️</span>
+            <span className="text-xs font-bold text-orange-800" aria-live="polite">{uniqueStatesCount} {t('pledge_stat_states')}</span>
           </div>
           <div className="w-px h-8 bg-orange-200"></div>
           <div className="flex flex-col items-center flex-1">
-            <span className="text-lg mb-1">📅</span>
+            <span className="text-lg mb-1" aria-hidden="true">📅</span>
             <span className="text-xs font-bold text-orange-800">{t('pledge_stat_since')}</span>
           </div>
         </div>
@@ -311,4 +318,6 @@ export default function PledgeWallView() {
       </div>
     </div>
   );
-}
+});
+
+export default PledgeWallView;

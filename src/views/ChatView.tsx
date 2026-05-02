@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo, useMemo, useCallback } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Send, User, Bot } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import clsx from 'clsx';
+import DOMPurify from 'dompurify';
 
 const SYSTEM_PROMPT = `
 You are Kavya, a friendly, knowledgeable, and non-partisan Indian election 
@@ -54,7 +55,7 @@ interface Message {
   suggestions?: string[];
 }
 
-export default function ChatView() {
+const ChatView = memo(() => {
   const { t, language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>(() => {
     const saved = sessionStorage.getItem('kavya_chat_v2');
@@ -81,26 +82,26 @@ export default function ChatView() {
     }
   }, [messages]);
 
-  const getStarterChips = () => [
+  const starterChips = useMemo(() => [
     t('chat_starter_1'),
     t('chat_starter_2'),
     t('chat_starter_3'),
     t('chat_starter_4'),
     t('chat_starter_5'),
     t('chat_starter_6')
-  ];
+  ], [t]);
 
-  const getFallbackSuggestions = () => [
+  const fallbackSuggestions = useMemo(() => [
     t('chat_fallback_1'),
     t('chat_fallback_2'),
     t('chat_fallback_3')
-  ];
+  ], [t]);
 
-  const handleSend = async (text: string) => {
+  const handleSend = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
 
-    const newMessages: Message[] = [...messages, { role: 'user', content: text }];
-    setMessages(newMessages);
+    const userMsg: Message = { role: 'user', content: text };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
 
@@ -110,11 +111,11 @@ export default function ChatView() {
 
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.5-flash', 
+        model: 'gemini-1.5-flash', 
         systemInstruction: SYSTEM_PROMPT + `\n\nCRITICAL: The user has currently selected the language '${language}'. You MUST reply in this language.` 
       });
       
-      const history = newMessages.slice(1, -1).map(m => ({
+      const history = messages.slice(1).map(m => ({
         role: m.role,
         parts: [{ text: m.content }]
       }));
@@ -131,40 +132,53 @@ export default function ChatView() {
       const messageText = parts[0].trim();
       const suggestionsRaw = parts[1]?.trim() || '';
       
-      let suggestions = suggestionsRaw
+      let suggestionsList = suggestionsRaw
         .split('|')
         .map(s => s.trim())
         .filter(s => s.length > 0)
         .slice(0, 3);
         
-      if (suggestions.length === 0) {
-          suggestions = getFallbackSuggestions();
+      if (suggestionsList.length === 0) {
+          suggestionsList = fallbackSuggestions;
       }
 
-      setMessages([...newMessages, { role: 'model', content: messageText, suggestions }]);
+      const sanitizedContent = DOMPurify.sanitize(messageText);
+
+      setMessages(prev => [...prev, { role: 'model', content: sanitizedContent, suggestions: suggestionsList }]);
     } catch (error) {
       console.error(error);
-      setMessages([...newMessages, { role: 'model', content: "I'm having trouble connecting to my knowledge base right now. Please try again later." }]);
+      setMessages(prev => [...prev, { role: 'model', content: "I'm having trouble connecting to my knowledge base right now. Please try again later." }]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isLoading, language, messages, fallbackSuggestions]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSend(input);
+    }
+  }, [input, handleSend]);
 
   return (
-    <div className="flex flex-col max-w-md mx-auto h-[calc(100vh-130px)] max-h-screen pt-4 relative pb-4">
+    <div className="flex flex-col max-w-md mx-auto h-[calc(100vh-130px)] max-h-screen pt-4 relative pb-4 bg-white">
       <div className="px-5 mb-2">
          <h2 className="text-2xl font-bold text-primary">{t('chat_title')}</h2>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-5 pb-24">
+      <div 
+        ref={scrollRef} 
+        className="flex-1 overflow-y-auto px-5 py-4 space-y-5 pb-24"
+        role="log"
+        aria-label="Conversation history"
+      >
         {messages.map((m, i) => (
-          <div key={i} className={clsx("flex flex-col max-w-[90%]", m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start")}>
+          <div key={i} className={clsx("flex flex-col max-w-[90%]", m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start animate-in fade-in slide-in-from-bottom-2 duration-300")}>
             <div className={clsx("flex items-start", m.role === 'user' ? "flex-row-reverse" : "")}>
               <div className={clsx(
                   "w-8 h-8 rounded-full flex justify-center items-center shrink-0 mt-1 shadow-sm ring-2 ring-white",
                   m.role === 'user' ? "bg-accent text-white ml-3" : "bg-primary text-white mr-3"
               )}>
-                {m.role === 'user' ? <User size={18} /> : <Bot size={18} />}
+                {m.role === 'user' ? <User size={18} aria-hidden="true" /> : <Bot size={18} aria-hidden="true" />}
               </div>
               <div className={clsx(
                 "p-3.5 rounded-2xl text-[15px] shadow-sm leading-relaxed max-w-[85%]",
@@ -194,6 +208,7 @@ export default function ChatView() {
                   <button
                     key={idx}
                     onClick={() => handleSend(suggestion)}
+                    aria-label={`Suggestion: ${suggestion}`}
                     className="bg-white border-[1.5px] border-[#FF6B35] rounded-full px-3.5 py-2 text-[13px] text-[#FF6B35] font-medium max-w-[220px] whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer transition-all duration-200 hover:bg-[#FF6B35] hover:text-white hover:scale-[1.03] active:scale-95 shadow-sm"
                   >
                     {suggestion}
@@ -208,10 +223,11 @@ export default function ChatView() {
           <div className="ml-11 mt-4 animate-in fade-in duration-500">
             <p className="text-[13px] text-gray-500 mb-2 font-medium">{t('chat_ask_anything')}</p>
             <div className="flex flex-wrap gap-2">
-              {getStarterChips().map((chip, i) => (
+              {starterChips.map((chip, i) => (
                 <button 
                   key={i} 
                   onClick={() => handleSend(chip)}
+                  aria-label={`Common question: ${chip}`}
                   className="bg-white border-[1.5px] border-[#FF6B35] rounded-full px-3.5 py-2 text-[13px] text-[#FF6B35] font-medium max-w-[220px] whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer transition-all duration-200 hover:bg-[#FF6B35] hover:text-white hover:scale-[1.03] active:scale-95 shadow-sm text-left"
                 >
                     {chip}
@@ -222,36 +238,41 @@ export default function ChatView() {
         )}
 
         {isLoading && (
-          <div className="flex items-start max-w-[85%] animate-in fade-in zoom-in duration-200">
+          <div className="flex items-start max-w-[85%] animate-in fade-in zoom-in duration-200" aria-live="polite">
             <div className="w-8 h-8 rounded-full flex justify-center items-center shrink-0 mt-1 shadow-sm ring-2 ring-white bg-primary text-white mr-3">
-              <Bot size={18} />
+              <Bot size={18} aria-hidden="true" />
             </div>
             <div className="bg-white border border-gray-100 p-4 rounded-2xl rounded-tl-sm shadow-sm flex items-center space-x-1.5 h-11">
               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+              <span className="sr-only">Kavya is thinking...</span>
             </div>
           </div>
         )}
       </div>
 
-      <div className="fixed bottom-[80px] left-0 right-0 bg-surface border-t border-gray-200 px-4 py-3 flex items-center shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-40 max-w-md mx-auto">
+      <div className="fixed bottom-[80px] left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-40 max-w-md mx-auto">
         <input 
           type="text" 
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend(input)}
+          onKeyDown={handleKeyDown}
           placeholder={t('chat_placeholder')}
+          aria-label="Chat input"
           className="flex-1 bg-gray-100 rounded-full px-5 py-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-primary/40 mr-2"
         />
         <button 
           onClick={() => handleSend(input)}
           disabled={!input.trim() || isLoading}
+          aria-label="Send message"
           className="bg-primary text-white w-12 h-12 rounded-full flex justify-center items-center shadow-md active:scale-90 disabled:opacity-50 transition-transform flex-shrink-0"
         >
-          <Send size={20} className="ml-1" />
+          <Send size={20} className="ml-1" aria-hidden="true" />
         </button>
       </div>
     </div>
   );
-}
+});
+
+export default ChatView;
