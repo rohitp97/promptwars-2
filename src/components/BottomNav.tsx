@@ -1,5 +1,5 @@
 import { useLanguage } from '../contexts/LanguageContext';
-import { Home, List, ShieldAlert, MessageSquare } from 'lucide-react';
+import { Home, List, ShieldAlert, MessageSquare, Award, Heart } from 'lucide-react';
 import clsx from 'clsx';
 
 interface BottomNavProps {
@@ -14,7 +14,9 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
     { id: 'home', icon: Home, label: t('nav_home') },
     { id: 'guide', icon: List, label: t('nav_guide') },
     { id: 'myth', icon: ShieldAlert, label: t('nav_myth') },
-    { id: 'chat', icon: MessageSquare, label: t('nav_chat') }
+    { id: 'chat', icon: MessageSquare, label: t('nav_chat') },
+    { id: 'quiz', icon: Award, label: t('nav_quiz') },
+    { id: 'pledge', icon: Heart, label: t('nav_pledge') }
   ];
 
   return (

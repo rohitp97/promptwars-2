@@ -35,11 +35,23 @@ Keep responses under 120 words unless the question requires more detail.
 Always end with a follow-up prompt suggestion like: "Aur kuch poochna 
 hai? (Want to ask something else?)" or "Should I explain what happens 
 inside the polling booth?"
+
+After every response, on a completely new line, add exactly this 
+format and nothing else after it:
+
+SUGGESTIONS: [suggestion 1] | [suggestion 2] | [suggestion 3]
+
+Each suggestion must be a short question (under 8 words) that 
+naturally follows from your answer. Write suggestions in the same 
+language as your response (Hindi/Hinglish if user asked in Hindi, 
+English if user asked in English). Never number the suggestions. 
+Never skip this line. Always provide exactly 3 suggestions.
 `;
 
 interface Message {
   role: 'user' | 'model';
   content: string;
+  suggestions?: string[];
 }
 
 export default function ChatView() {
@@ -67,13 +79,19 @@ export default function ChatView() {
     }
   }, [messages]);
 
-  const quickQuestions = [
-    "When is the next election in my state?",
-    "How do I register as a voter?",
-    "What should I carry to the polling booth?",
-    "Can my boss stop me from voting?",
-    "Is the EVM safe?",
-    "Someone offered me money to vote. What do I do?"
+  const getStarterChips = () => [
+    t('chat_starter_1'),
+    t('chat_starter_2'),
+    t('chat_starter_3'),
+    t('chat_starter_4'),
+    t('chat_starter_5'),
+    t('chat_starter_6')
+  ];
+
+  const getFallbackSuggestions = () => [
+    t('chat_fallback_1'),
+    t('chat_fallback_2'),
+    t('chat_fallback_3')
   ];
 
   const handleSend = async (text: string) => {
@@ -101,11 +119,27 @@ export default function ChatView() {
 
       const chat = model.startChat({
         history,
-        generationConfig: { maxOutputTokens: 300, temperature: 0.4 }
+        generationConfig: { maxOutputTokens: 800, temperature: 0.4 }
       });
 
       const result = await chat.sendMessage(text);
-      setMessages([...newMessages, { role: 'model', content: result.response.text() }]);
+      const rawResponse = result.response.text();
+      
+      const parts = rawResponse.split('SUGGESTIONS:');
+      const messageText = parts[0].trim();
+      const suggestionsRaw = parts[1]?.trim() || '';
+      
+      let suggestions = suggestionsRaw
+        .split('|')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+        .slice(0, 3);
+        
+      if (suggestions.length === 0) {
+          suggestions = getFallbackSuggestions();
+      }
+
+      setMessages([...newMessages, { role: 'model', content: messageText, suggestions }]);
     } catch (error) {
       console.error(error);
       setMessages([...newMessages, { role: 'model', content: "I'm having trouble connecting to my knowledge base right now. Please try again later." }]);
@@ -120,58 +154,81 @@ export default function ChatView() {
          <h2 className="text-2xl font-bold text-primary">{t('chat_title')}</h2>
       </div>
 
-      {messages.length === 1 && (
-        <div className="px-5 mt-4 mb-2 flex flex-wrap gap-2">
-            {quickQuestions.map((q, i) => (
-                <button 
-                  key={i} 
-                  onClick={() => handleSend(q)}
-                  className="bg-surface border border-gray-200 text-sm text-gray-700 px-4 py-2 rounded-full shadow-sm active:scale-95 text-left leading-tight"
-                >
-                    {q}
-                </button>
-            ))}
-        </div>
-      )}
-
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4 pb-20">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-5 pb-24">
         {messages.map((m, i) => (
-          <div key={i} className={clsx("flex items-start max-w-[85%]", m.role === 'user' ? "ml-auto flex-row-reverse" : "")}>
-            <div className={clsx(
-                "w-8 h-8 rounded-full flex justify-center items-center shrink-0 mt-1 shadow-sm ring-2 ring-white",
-                m.role === 'user' ? "bg-accent text-white ml-3" : "bg-primary text-white mr-3"
-            )}>
-              {m.role === 'user' ? <User size={18} /> : <Bot size={18} />}
+          <div key={i} className={clsx("flex flex-col max-w-[90%]", m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start")}>
+            <div className={clsx("flex items-start", m.role === 'user' ? "flex-row-reverse" : "")}>
+              <div className={clsx(
+                  "w-8 h-8 rounded-full flex justify-center items-center shrink-0 mt-1 shadow-sm ring-2 ring-white",
+                  m.role === 'user' ? "bg-accent text-white ml-3" : "bg-primary text-white mr-3"
+              )}>
+                {m.role === 'user' ? <User size={18} /> : <Bot size={18} />}
+              </div>
+              <div className={clsx(
+                "p-3.5 rounded-2xl text-[15px] shadow-sm leading-relaxed max-w-[85%]",
+                m.role === 'user' ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-gray-100 text-gray-800 rounded-tl-sm"
+              )}>
+                {m.role === 'model' ? (
+                  <ReactMarkdown
+                    components={{
+                      p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
+                      strong: ({children}) => <strong className="font-semibold">{children}</strong>,
+                      ol: ({children}) => <ol className="list-decimal ml-4 space-y-1 my-1">{children}</ol>,
+                      ul: ({children}) => <ul className="list-disc ml-4 space-y-1 my-1">{children}</ul>,
+                      li: ({children}) => <li className="leading-relaxed">{children}</li>,
+                    }}
+                  >
+                    {m.content}
+                  </ReactMarkdown>
+                ) : (
+                  m.content
+                )}
+              </div>
             </div>
-            <div className={clsx(
-              "p-3.5 rounded-2xl text-[15px] shadow-sm leading-relaxed",
-              m.role === 'user' ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border border-gray-100 text-gray-800 rounded-tl-sm"
-            )}>
-              {m.role === 'model' ? (
-                <ReactMarkdown
-                  components={{
-                    p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
-                    strong: ({children}) => <strong className="font-semibold">{children}</strong>,
-                    ol: ({children}) => <ol className="list-decimal ml-4 space-y-1 my-1">{children}</ol>,
-                    ul: ({children}) => <ul className="list-disc ml-4 space-y-1 my-1">{children}</ul>,
-                    li: ({children}) => <li className="leading-relaxed">{children}</li>,
-                  }}
-                >
-                  {m.content}
-                </ReactMarkdown>
-              ) : (
-                m.content
-              )}
-            </div>
+            
+            {m.role === 'model' && m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !isLoading && (
+              <div className="ml-11 mt-2 flex flex-wrap gap-2 animate-in fade-in duration-300">
+                {m.suggestions.map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSend(suggestion)}
+                    className="bg-white border-[1.5px] border-[#FF6B35] rounded-full px-3.5 py-2 text-[13px] text-[#FF6B35] font-medium max-w-[220px] whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer transition-all duration-200 hover:bg-[#FF6B35] hover:text-white hover:scale-[1.03] active:scale-95 shadow-sm"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
+        
+        {messages.length === 1 && !isLoading && (
+          <div className="ml-11 mt-4 animate-in fade-in duration-500">
+            <p className="text-[13px] text-gray-500 mb-2 font-medium">{t('chat_ask_anything')}</p>
+            <div className="flex flex-wrap gap-2">
+              {getStarterChips().map((chip, i) => (
+                <button 
+                  key={i} 
+                  onClick={() => handleSend(chip)}
+                  className="bg-white border-[1.5px] border-[#FF6B35] rounded-full px-3.5 py-2 text-[13px] text-[#FF6B35] font-medium max-w-[220px] whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer transition-all duration-200 hover:bg-[#FF6B35] hover:text-white hover:scale-[1.03] active:scale-95 shadow-sm text-left"
+                >
+                    {chip}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isLoading && (
-          <div className="flex items-center ml-[52px] text-gray-400">
-             <div className="bg-white border border-gray-100 p-4 rounded-full rounded-tl-sm shadow-sm inline-flex space-x-1">
-                <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce"></span>
-             </div>
+          <div className="flex items-start max-w-[85%] animate-in fade-in zoom-in duration-200">
+            <div className="w-8 h-8 rounded-full flex justify-center items-center shrink-0 mt-1 shadow-sm ring-2 ring-white bg-primary text-white mr-3">
+              <Bot size={18} />
+            </div>
+            <div className="bg-white border border-gray-100 p-4 rounded-2xl rounded-tl-sm shadow-sm flex items-center space-x-1.5 h-11">
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+            </div>
           </div>
         )}
       </div>

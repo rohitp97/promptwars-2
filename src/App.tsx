@@ -6,6 +6,8 @@ import GuideView from './views/GuideView';
 import EligibilityView from './views/EligibilityView';
 import MythBusterView from './views/MythBusterView';
 import ChatView from './views/ChatView';
+import QuizView from './views/QuizView';
+import PledgeWallView from './views/PledgeWallView';
 import { LanguageProvider } from './contexts/LanguageContext';
 
 function AppContent() {
@@ -20,6 +22,8 @@ function AppContent() {
         {activeTab === 'ready' && <EligibilityView />}
         {activeTab === 'myth' && <MythBusterView />}
         {activeTab === 'chat' && <ChatView />}
+        {activeTab === 'quiz' && <QuizView />}
+        {activeTab === 'pledge' && <PledgeWallView />}
       </main>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
