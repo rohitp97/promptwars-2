@@ -62,7 +62,9 @@ export default function ChatView() {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {}
+      } catch {
+        // Fallback to initial message
+      }
     }
     return [
       { role: 'model', content: "Namaste! I am Kavya, your election literacy guide. How can I help you understand your voting rights today?" }

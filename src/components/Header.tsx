@@ -12,6 +12,7 @@ export default function Header() {
         </div>
         <button 
           onClick={toggleLanguage}
+          aria-label={language === 'en' ? 'Switch to Hindi' : 'Switch to English'}
           className="bg-background text-primary px-3 py-1 rounded-full text-sm font-semibold shadow-sm active:scale-95 transition-transform"
         >
           {language === 'en' ? 'हिंदी' : 'English'}

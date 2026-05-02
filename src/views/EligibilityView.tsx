@@ -7,11 +7,12 @@ export default function EligibilityView() {
   const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [dob, setDob] = useState('');
-  const [answers, setAnswers] = useState<any>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [now] = useState(() => Date.now());
 
   const isAdult = (dateStr: string) => {
     if (!dateStr) return false;
-    const diff = Date.now() - new Date(dateStr).getTime();
+    const diff = now - new Date(dateStr).getTime();
     const ageDate = new Date(diff); 
     return Math.abs(ageDate.getUTCFullYear() - 1970) >= 18;
   };

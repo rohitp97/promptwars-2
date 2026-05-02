@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CheckCircle, Share, MapPin, Inbox as BoxIcon } from 'lucide-react';
 import Footer from '../components/Footer';
+import DOMPurify from 'dompurify';
 
 interface Pledge {
   id?: number;
@@ -37,29 +38,25 @@ export default function PledgeWallView() {
   const { t } = useLanguage();
   const [name, setName] = useState('');
   const [selectedState, setSelectedState] = useState('');
-  const [pledges, setPledges] = useState<Pledge[]>([]);
-  const [pledgeCount, setPledgeCount] = useState(4271);
+  const [pledges, setPledges] = useState<Pledge[]>(() => {
+    if (!localStorage.getItem('votesmart_pledges_seeded')) {
+      localStorage.setItem('votesmart_pledges', JSON.stringify(seedData));
+      localStorage.setItem('votesmart_pledge_count', '4271');
+      localStorage.setItem('votesmart_pledges_seeded', 'true');
+    }
+    const stored = JSON.parse(localStorage.getItem('votesmart_pledges') || '[]');
+    return stored.sort((a: Pledge, b: Pledge) => b.timestamp - a.timestamp);
+  });
+  const [pledgeCount, setPledgeCount] = useState(() => 
+    parseInt(localStorage.getItem('votesmart_pledge_count') || '4271', 10)
+  );
+  const [now] = useState(() => Date.now());
   const [hasPledged, setHasPledged] = useState(false);
   const [myPledge, setMyPledge] = useState<Pledge | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
   
   const wallRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Initialize data
-    if (!localStorage.getItem('votesmart_pledges_seeded')) {
-      localStorage.setItem('votesmart_pledges', JSON.stringify(seedData));
-      localStorage.setItem('votesmart_pledge_count', '4271');
-      localStorage.setItem('votesmart_pledges_seeded', 'true');
-    }
-
-    const storedPledges = JSON.parse(localStorage.getItem('votesmart_pledges') || '[]');
-    const storedCount = parseInt(localStorage.getItem('votesmart_pledge_count') || '4271', 10);
-    
-    setPledges(storedPledges.sort((a: Pledge, b: Pledge) => b.timestamp - a.timestamp));
-    setPledgeCount(storedCount);
-  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -78,9 +75,12 @@ export default function PledgeWallView() {
     setIsSubmitting(true);
     
     setTimeout(() => {
+      // Sanitize the user input to prevent XSS
+      const sanitizedName = DOMPurify.sanitize(name.trim(), { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+      
       const newPledge: Pledge = {
         id: Date.now(),
-        name: name.trim(),
+        name: sanitizedName || 'Anonymous', // Fallback if name was completely stripped
         state: selectedState,
         timestamp: Date.now()
       };
@@ -100,6 +100,7 @@ export default function PledgeWallView() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 600);
   };
+
 
   const handleShare = async () => {
     const shareText = `I, ${myPledge?.name} from ${myPledge?.state}, pledge to vote in the upcoming elections and not be influenced by cash or gifts. 🗳️🇮🇳 \nTake the pledge: ${window.location.href}`;
@@ -125,7 +126,7 @@ export default function PledgeWallView() {
   };
 
   const formatTimeAgo = (timestamp: number) => {
-    const diff = Date.now() - timestamp;
+    const diff = now - timestamp;
     const minutes = Math.floor(diff / 60000);
     if (minutes < 1) return "Just now";
     if (minutes < 60) return `${minutes} minutes ago`;

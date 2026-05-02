@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CheckCircle, XCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -111,14 +111,12 @@ export default function QuizView() {
   const [state, setState] = useState<'intro' | 'playing' | 'result'>('intro');
   const [currentQ, setCurrentQ] = useState(0);
   const [score, setScore] = useState(0);
-  const [bestScore, setBestScore] = useState<number | null>(null);
+  const [bestScore, setBestScore] = useState<number | null>(() => {
+    const saved = localStorage.getItem('votesmart_best_score');
+    return saved ? parseInt(saved, 10) : null;
+  });
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('votesmart_best_score');
-    if (saved) setBestScore(parseInt(saved, 10));
-  }, []);
 
   const handleStart = () => {
     setState('playing');
