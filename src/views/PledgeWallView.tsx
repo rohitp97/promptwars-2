@@ -112,8 +112,8 @@ const PledgeWallView = memo(() => {
           title: "I took the Voter Pledge on VoteSmartIndia",
           text: shareText,
         });
-      } catch (err) {
-        console.log("Error sharing:", err);
+      } catch {
+        // Silent catch for navigator.share cancellation
       }
     } else {
       navigator.clipboard.writeText(shareText);

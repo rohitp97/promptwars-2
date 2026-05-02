@@ -1,7 +1,7 @@
-import { useState, Suspense, lazy } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
-import { LanguageProvider } from './contexts/LanguageContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
 const HomeView = lazy(() => import('./views/HomeView'));
 const GuideView = lazy(() => import('./views/GuideView'));
@@ -18,7 +18,22 @@ const FallbackLoader = () => (
 );
 
 function AppContent() {
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState('home');
+
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      home: t('app_name'),
+      guide: t('nav_guide'),
+      ready: t('card_ready'),
+      myth: t('nav_myth'),
+      chat: t('chat_title'),
+      quiz: t('nav_quiz'),
+      pledge: t('nav_pledge')
+    };
+    
+    document.title = `${titles[activeTab] || 'VoteSmartIndia'} | VoteSmartIndia`;
+  }, [activeTab, language, t]);
 
   return (
     <div className="min-h-screen bg-background font-sans text-textMain">
