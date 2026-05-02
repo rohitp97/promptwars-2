@@ -14,7 +14,7 @@ export default defineConfig({
       manifest: {
         name: "VoteSmartIndia",
         short_name: "VoteSmart",
-        theme_color: "#FF6B35",
+        theme_color: "#C2410C",
         background_color: "#FAFAF8",
         display: "standalone",
         icons: [
