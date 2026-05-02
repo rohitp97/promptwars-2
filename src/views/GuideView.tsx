@@ -86,7 +86,7 @@ const GuideView = memo(() => {
                 </div>
                 <ChevronDown 
                     size={20} 
-                    className={`text-gray-400 mt-2 transition-transform duration-300 ${expanded === step.id ? 'rotate-180' : ''}`} 
+                    className={`text-gray-500 mt-2 transition-transform duration-300 ${expanded === step.id ? 'rotate-180' : ''}`} 
                     aria-hidden="true"
                 />
              </button>

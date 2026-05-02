@@ -320,7 +320,7 @@ const QuizView = memo(() => {
       
       <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-black/5 w-full text-center mb-6" role="status" aria-live="polite">
         <p className="text-gray-500 font-semibold mb-1">{t('quiz_score')}</p>
-        <p className="text-5xl font-black text-gray-800 mb-2">{score}<span className="text-2xl text-gray-400">/100</span></p>
+        <p className="text-5xl font-black text-gray-800 mb-2">{score}<span className="text-2xl text-gray-500">/100</span></p>
         <p className="text-sm font-semibold text-green-600 bg-green-100 inline-block px-3 py-1 rounded-full mb-4">
           {score / 10} out of 10 correct
         </p>

@@ -274,7 +274,7 @@ const PledgeWallView = memo(() => {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
                     <h4 className="font-bold text-[16px] text-textMain truncate pr-2">{pledge.name}</h4>
-                    <span className="text-[12px] text-gray-400 whitespace-nowrap" aria-label={`Time ago: ${formatTimeAgo(pledge.timestamp)}`}>{formatTimeAgo(pledge.timestamp)}</span>
+                    <span className="text-[12px] text-gray-500 whitespace-nowrap" aria-label={`Time ago: ${formatTimeAgo(pledge.timestamp)}`}>{formatTimeAgo(pledge.timestamp)}</span>
                   </div>
                   <p className="text-[14px] text-gray-500 flex items-center gap-1 mt-0.5">
                     <MapPin size={12} aria-hidden="true" /> {pledge.state}

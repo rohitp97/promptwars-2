@@ -30,7 +30,7 @@ const BottomNav = memo(({ activeTab, setActiveTab }: BottomNavProps) => {
             aria-label={`Navigate to ${item.label}`}
             className={clsx(
               "flex flex-1 flex-col items-center py-2 h-16 active:scale-95 transition-transform",
-              activeTab === item.id ? "text-primary" : "text-gray-400"
+              activeTab === item.id ? "text-primary" : "text-gray-500"
             )}
           >
             <item.icon size={22} className={clsx("mb-1", activeTab === item.id && "fill-primary/20")} aria-hidden="true" />

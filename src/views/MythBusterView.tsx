@@ -87,7 +87,7 @@ const MythBusterView = memo(() => {
                 {language === 'en' ? 'Myth' : 'झूठ'}
               </span>
               <p className="text-2xl font-bold text-gray-800 leading-snug">"{myths[index].myth}"</p>
-              <div className="absolute bottom-8 text-gray-400 text-sm font-medium animate-pulse" aria-hidden="true">
+              <div className="absolute bottom-8 text-gray-500 text-sm font-medium animate-pulse" aria-hidden="true">
                 {language === 'en' ? 'Tap to reveal fact' : 'सच देखने के लिए टैप करें'}
               </div>
             </div>
@@ -111,7 +111,7 @@ const MythBusterView = memo(() => {
         </div>
 
         <div className="mt-10 flex items-center space-x-6">
-          <p className="text-gray-400 font-semibold" aria-live="polite">{index + 1} / {myths.length}</p>
+          <p className="text-gray-500 font-semibold" aria-live="polite">{index + 1} / {myths.length}</p>
           <button 
             onClick={handleNext}
             aria-label="Show next myth"

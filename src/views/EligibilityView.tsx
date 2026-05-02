@@ -159,7 +159,7 @@ const EligibilityView = memo(() => {
               </>
             ) : needsRegistration ? (
               <>
-                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 ring-8 blue-50">
+                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 ring-8 ring-blue-50">
                   <Info size={32} aria-hidden="true" />
                 </div>
                 <h3 className="font-bold text-xl mb-2 text-blue-700">{t('eligibility_register')}</h3>
