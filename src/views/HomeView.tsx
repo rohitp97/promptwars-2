@@ -23,7 +23,6 @@ const HomeView = memo(({ setActiveTab }: { setActiveTab: (tab: string) => void }
             key={card.id}
             onClick={() => setActiveTab(card.id)}
             aria-label={`Open ${card.title}`}
-            role="button"
             className={`${card.bg} border ${card.border} rounded-[20px] p-6 flex flex-col justify-center items-center shadow-sm min-h-[130px] active:scale-[0.98] transition-transform`}
           >
             <card.icon size={44} className={`mb-3 ${card.color}`} aria-hidden="true" />

@@ -28,7 +28,6 @@ const BottomNav = memo(({ activeTab, setActiveTab }: BottomNavProps) => {
             key={item.id}
             onClick={() => setActiveTab(item.id)}
             aria-label={`Navigate to ${item.label}`}
-            role="button"
             className={clsx(
               "flex flex-1 flex-col items-center py-2 h-16 active:scale-95 transition-transform",
               activeTab === item.id ? "text-primary" : "text-gray-400"
