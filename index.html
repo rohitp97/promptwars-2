@@ -6,12 +6,20 @@
     <link rel="apple-touch-icon" href="/icon-192x192.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet" media="all">
+    
+    <link rel="alternate" hreflang="en" href="https://votesmartindia.web.app/" />
+    <link rel="alternate" hreflang="hi" href="https://votesmartindia.web.app/" />
+    <link rel="alternate" hreflang="x-default" href="https://votesmartindia.web.app/" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <meta name="theme-color" content="#C2410C" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="VoteSmart" />
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.vercel-storage.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com;" />
     
     <title>VoteSmartIndia | Samjho. Jaano. Vote Karo. 🗳️</title>
     <meta name="description" content="VoteSmartIndia is a non-partisan PWA to help Indian citizens understand the election process, check eligibility, and bust voting myths." />

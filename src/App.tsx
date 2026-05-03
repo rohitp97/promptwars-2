@@ -33,6 +33,7 @@ function AppContent() {
     };
     
     document.title = `${titles[activeTab] || 'VoteSmartIndia'} | VoteSmartIndia`;
+    document.documentElement.lang = language;
   }, [activeTab, language, t]);
 
   return (

@@ -6,6 +6,10 @@
   body {
     @apply bg-background text-textMain font-sans antialiased;
   }
+  
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2;
+  }
 }
 
 .perspective-1000 {
